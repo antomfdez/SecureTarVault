@@ -1,17 +1,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+
+#define MAX_PATHS 100
+#define COMMAND_SIZE 512
+
+
+int is_valid_input(const char *input) {
+    while (*input) {
+        if (!isalnum(*input) && *input != '_' && *input != '-') {
+            return 0;
+        }
+        input++;
+    }
+    return 1;
+}
 
 void encrypt(const char* publicKey, const char* outputFile, int numPaths, char* paths[]) {
-    printf("Public Key: %s\n", publicKey);
-    printf("Output File: %s\n", outputFile);
-    printf("Paths:\n");
-
-    for (int i = 0; i < numPaths; i++) {
-        printf("%s\n", paths[i]);
-    }
-
-    char tar[512];
+    char tar[COMMAND_SIZE];
     sprintf(tar, "tar cf ./files.tar");
 
     for (int i = 0; i < numPaths; i++) {
@@ -26,7 +33,7 @@ void encrypt(const char* publicKey, const char* outputFile, int numPaths, char* 
         return;
     }
 
-    char command[512];
+    char command[COMMAND_SIZE];
     sprintf(command, "gpg --output %s --encrypt --recipient %s ./files.tar", outputFile, publicKey);
     
     printf("Running: %s\n", command);
@@ -46,7 +53,7 @@ void encrypt(const char* publicKey, const char* outputFile, int numPaths, char* 
 }
 
 void decrypt(const char* gpgFile) {
-    char decryptCommand[256];
+    char decryptCommand[COMMAND_SIZE];
     sprintf(decryptCommand, "gpg --output ./files.tar --decrypt %s", gpgFile);
     
     printf("Running: %s\n", decryptCommand);
@@ -57,7 +64,7 @@ void decrypt(const char* gpgFile) {
         return;
     }
     
-    char extractCommand[256];
+    char extractCommand[COMMAND_SIZE];
     sprintf(extractCommand, "tar xf ./files.tar");
     
     printf("Running: %s\n", extractCommand);
@@ -87,7 +94,7 @@ int main(int argc, char **argv) {
     const char *publicKey = NULL;
     const char *outputFile = NULL;
     int numPaths = 0;
-    char *filePaths[argc - 3];  // Store file paths
+    char *filePaths[MAX_PATHS];
 
     if (strcmp(argv[1], "c") == 0) {
         for (int i = 2; i < argc; i++) {
@@ -100,8 +107,20 @@ int main(int argc, char **argv) {
                     return 1;
                 }
             } else if (publicKey == NULL) {
+                if (!is_valid_input(argv[i])) {
+                    printf("Error: Invalid public key.\n");
+                    return 1;
+                }
                 publicKey = argv[i]; // First non-option argument is the public key
             } else {
+                if (numPaths >= MAX_PATHS) {
+                    printf("Error: Too many file paths provided.\n");
+                    return 1;
+                }
+                if (!is_valid_input(argv[i])) {
+                    printf("Error: Invalid file path.\n");
+                    return 1;
+                }
                 filePaths[numPaths++] = argv[i];
             }
         }
